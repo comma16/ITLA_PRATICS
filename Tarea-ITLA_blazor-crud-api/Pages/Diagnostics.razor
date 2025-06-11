@@ -1,0 +1,277 @@
+@page "/diagnostics"
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Diagnóstico de Base de Datos</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-database me-2 text-primary"></i>
+                    Diagnóstico de Base de Datos
+                </h2>
+                <div>
+                    <button class="btn btn-primary me-2" @onclick="CheckDatabase" disabled="@isLoading">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Verificar Conexión
+                    </button>
+                    <button class="btn btn-success" @onclick="CreateDatabase" disabled="@isLoading">
+                        <i class="fas fa-plus me-2"></i>
+                        Crear/Actualizar BD
+                    </button>
+                    <button class="btn btn-warning" @onclick="SeedData" disabled="@isLoading">
+                        <i class="fas fa-seedling me-2"></i>
+                        Insertar Datos de Prueba
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Verificando conexión a la base de datos...</p>
+        </div>
+    }
+    else if (error != null)
+    {
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error de conexión
+            </h4>
+            <p>@error</p>
+            @if (!string.IsNullOrEmpty(innerError))
+            {
+                <hr>
+                <p class="mb-0">Detalles adicionales: @innerError</p>
+            }
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información de conexión
+                </h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Cadena de conexión:</strong> @connectionString</p>
+                <hr>
+                <h6>Soluciones comunes:</h6>
+                <ul>
+                    <li>Verifica que SQL Server esté instalado y en ejecución</li>
+                    <li>Comprueba que la cadena de conexión sea correcta</li>
+                    <li>Asegúrate de tener permisos para crear bases de datos</li>
+                    <li>Si usas LocalDB, verifica que esté instalado con <code>sqllocaldb info</code></li>
+                </ul>
+            </div>
+        </div>
+    }
+    else if (dbInfo != null)
+    {
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Conexión exitosa
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Estado de la base de datos:</h6>
+                        <ul class="list-group mb-3">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Conexión a la BD
+                                @if (dbInfo.CanConnect)
+                                {
+                                    <span class="badge bg-success rounded-pill">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger rounded-pill">
+                                        <i class="fas fa-times"></i>
+                                    </span>
+                                }
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Base de datos existe
+                                @if (dbInfo.DatabaseExists)
+                                {
+                                    <span class="badge bg-success rounded-pill">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning rounded-pill">
+                                        <i class="fas fa-exclamation"></i>
+                                    </span>
+                                }
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Productos en la BD
+                                <span class="badge bg-primary rounded-pill">@dbInfo.ProductCount</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Información de conexión:</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Cadena de conexión:</label>
+                            <input type="text" class="form-control" value="@dbInfo.ConnectionString" readonly />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Versión del servidor:</label>
+                            <input type="text" class="form-control" value="@dbInfo.ServerVersion" readonly />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    @dbInfo.Message
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="/products" class="btn btn-primary">
+                        <i class="fas fa-box me-2"></i>
+                        Ir a Gestión de Productos
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = false;
+    private string? error;
+    private string? innerError;
+    private string? connectionString;
+    private DatabaseInfo? dbInfo;
+
+    private class DatabaseInfo
+    {
+        public string Status { get; set; } = "";
+        public bool CanConnect { get; set; }
+        public bool DatabaseExists { get; set; }
+        public string ConnectionString { get; set; } = "";
+        public int ProductCount { get; set; }
+        public string ServerVersion { get; set; } = "";
+        public string Message { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckDatabase();
+    }
+
+    private async Task CheckDatabase()
+    {
+        try
+        {
+            isLoading = true;
+            error = null;
+            innerError = null;
+            dbInfo = null;
+            
+            var response = await Http.GetAsync("api/diagnostic/database");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                dbInfo = await response.Content.ReadFromJsonAsync<DatabaseInfo>();
+            }
+            else
+            {
+                var errorResponse = await response.Content.ReadFromJsonAsync<dynamic>();
+                error = errorResponse?.Message ?? "Error desconocido al conectar a la base de datos";
+                innerError = errorResponse?.InnerError;
+                connectionString = errorResponse?.ConnectionString;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error al verificar la base de datos: {ex.Message}";
+            innerError = ex.InnerException?.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateDatabase()
+    {
+        try
+        {
+            isLoading = true;
+            error = null;
+            innerError = null;
+            
+            var response = await Http.GetAsync("api/diagnostic/create-database");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
+                await JSRuntime.InvokeVoidAsync("alert", $"Base de datos creada/actualizada correctamente. Productos: {result?.ProductCount ?? 0}");
+                await CheckDatabase();
+            }
+            else
+            {
+                var errorResponse = await response.Content.ReadFromJsonAsync<dynamic>();
+                error = errorResponse?.Message ?? "Error desconocido al crear la base de datos";
+                innerError = errorResponse?.InnerError;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error al crear la base de datos: {ex.Message}";
+            innerError = ex.InnerException?.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SeedData()
+    {
+        try
+        {
+            isLoading = true;
+            error = null;
+        
+            var response = await Http.PostAsync("api/diagnostic/seed-data", null);
+        
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<dynamic>();
+                await JSRuntime.InvokeVoidAsync("alert", $"Datos insertados correctamente. Total: {result?.ProductCount ?? 0} productos");
+                await CheckDatabase();
+            }
+            else
+            {
+                var errorResponse = await response.Content.ReadFromJsonAsync<dynamic>();
+                error = errorResponse?.Message ?? "Error al insertar datos";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error al insertar datos: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

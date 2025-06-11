@@ -1,0 +1,388 @@
+@page "/products"
+@using BlazorCrudApi.Models
+@inject BlazorCrudApi.Services.IApiService ApiService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Productos - CRUD Blazor</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-box me-2 text-primary"></i>
+                    Gestión de Productos
+                </h2>
+                <button class="btn btn-success" @onclick="ShowCreateModal">
+                    <i class="fas fa-plus me-2"></i>
+                    Nuevo Producto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de búsqueda -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" class="form-control" placeholder="Buscar productos..." 
+                       @bind="searchTerm" @onkeyup="SearchProducts" />
+                @if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    <button class="btn btn-outline-secondary" @onclick="ClearSearch">
+                        <i class="fas fa-times"></i>
+                    </button>
+                }
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <span class="badge bg-info fs-6">
+                Total: @products.Count() productos
+            </span>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando productos...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error al cargar productos
+            </h4>
+            <p>@errorMessage</p>
+            <hr>
+            <button class="btn btn-outline-danger" @onclick="LoadProducts">
+                <i class="fas fa-sync-alt me-2"></i>
+                Reintentar
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Tabla de productos -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-body p-0">
+                        @if (products.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nombre</th>
+                                            <th>Descripción</th>
+                                            <th>Precio</th>
+                                            <th>Categoría</th>
+                                            <th>Fecha Creación</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var product in products)
+                                        {
+                                            <tr>
+                                                <td><span class="badge bg-secondary">@product.Id</span></td>
+                                                <td class="fw-bold">@product.Name</td>
+                                                <td>
+                                                    @if (product.Description.Length > 50)
+                                                    {
+                                                        <span title="@product.Description">
+                                                            @(product.Description.Substring(0, 50))...
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        @product.Description
+                                                    }
+                                                </td>
+                                                <td class="text-success fw-bold">$@product.Price.ToString("N2")</td>
+                                                <td>
+                                                    <span class="badge bg-primary">@product.Category</span>
+                                                </td>
+                                                <td>@product.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                                <td class="text-center">
+                                                    <div class="btn-group" role="group">
+                                                        <button class="btn btn-sm btn-outline-primary" 
+                                                                @onclick="() => ShowEditModal(product)"
+                                                                title="Editar">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" 
+                                                                @onclick="() => DeleteProduct(product.Id)"
+                                                                title="Eliminar">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-5">
+                                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No se encontraron productos</h5>
+                                <p class="text-muted">
+                                    @if (!string.IsNullOrWhiteSpace(searchTerm))
+                                    {
+                                        <span>No hay productos que coincidan con "@searchTerm"</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Comienza agregando tu primer producto</span>
+                                    }
+                                </p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal para Crear/Editar Producto -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas @(isEditMode ? "fa-edit" : "fa-plus") me-2"></i>
+                        @(isEditMode ? "Editar Producto" : "Nuevo Producto")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="currentProduct" OnValidSubmit="SaveProduct">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Nombre *</label>
+                                <InputText class="form-control" @bind-Value="currentProduct.Name" placeholder="Ingrese el nombre del producto" />
+                                <ValidationMessage For="@(() => currentProduct.Name)" class="text-danger" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Categoría *</label>
+                                <InputText class="form-control" @bind-Value="currentProduct.Category" placeholder="Ingrese la categoría" />
+                                <ValidationMessage For="@(() => currentProduct.Category)" class="text-danger" />
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Descripción</label>
+                            <InputTextArea class="form-control" @bind-Value="currentProduct.Description" 
+                                         rows="3" placeholder="Ingrese la descripción del producto" />
+                            <ValidationMessage For="@(() => currentProduct.Description)" class="text-danger" />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Precio *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber class="form-control" @bind-Value="currentProduct.Price" 
+                                           placeholder="0.00" step="0.01" />
+                            </div>
+                            <ValidationMessage For="@(() => currentProduct.Price)" class="text-danger" />
+                        </div>
+                        
+                        <div class="modal-footer border-0 px-0">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">
+                                <i class="fas fa-times me-2"></i>
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-success" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-save me-2"></i>
+                                }
+                                @(isEditMode ? "Actualizar" : "Crear") Producto
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Product> products = new();
+    private Product currentProduct = new();
+    private bool showModal = false;
+    private bool isEditMode = false;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string searchTerm = string.Empty;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            products = await ApiService.GetProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar productos: {ex.Message}";
+            products = new List<Product>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SearchProducts()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            products = await ApiService.GetProductsAsync(searchTerm);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error en la búsqueda: {ex.Message}";
+            products = new List<Product>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = string.Empty;
+        await LoadProducts();
+    }
+
+    private void ShowCreateModal()
+    {
+        currentProduct = new Product();
+        isEditMode = false;
+        showModal = true;
+    }
+
+    private void ShowEditModal(Product product)
+    {
+        currentProduct = new Product
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            Category = product.Category
+        };
+        isEditMode = true;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        currentProduct = new Product();
+        isEditMode = false;
+        isSaving = false;
+    }
+
+    private async Task SaveProduct()
+    {
+        try
+        {
+            isSaving = true;
+            
+            if (isEditMode)
+            {
+                var result = await ApiService.UpdateProductAsync(currentProduct.Id, currentProduct);
+                if (result != null)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Producto actualizado exitosamente");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Error al actualizar el producto");
+                }
+            }
+            else
+            {
+                var result = await ApiService.CreateProductAsync(currentProduct);
+                if (result != null)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Producto creado exitosamente");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Error al crear el producto");
+                }
+            }
+            
+            CloseModal();
+            await LoadProducts();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "¿Estás seguro de que deseas eliminar este producto?");
+        if (!confirmed) return;
+
+        try
+        {
+            var result = await ApiService.DeleteProductAsync(id);
+            if (result)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Producto eliminado exitosamente");
+                await LoadProducts();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error al eliminar el producto");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+}

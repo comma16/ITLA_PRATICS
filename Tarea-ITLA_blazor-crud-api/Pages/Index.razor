@@ -1,0 +1,86 @@
+@page "/"
+
+<PageTitle>Inicio - CRUD Blazor</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="jumbotron bg-primary text-white p-5 rounded mb-4">
+                <h1 class="display-4">
+                    <i class="fas fa-rocket me-3"></i>
+                    Bienvenido al CRUD Blazor
+                </h1>
+                <p class="lead">Sistema completo de gestión de productos con Blazor Server y ASP.NET Web API</p>
+                <hr class="my-4 bg-white">
+                <p>Explora todas las funcionalidades CRUD: Crear, Leer, Actualizar y Eliminar productos.</p>
+                <a class="btn btn-light btn-lg" href="/products" role="button">
+                    <i class="fas fa-box me-2"></i>
+                    Ver Productos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-plus-circle fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Crear</h5>
+                    <p class="card-text">Agrega nuevos productos al inventario con información detallada.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-edit fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Actualizar</h5>
+                    <p class="card-text">Modifica la información de productos existentes fácilmente.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-search fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">Buscar</h5>
+                    <p class="card-text">Encuentra productos rápidamente con nuestro sistema de búsqueda.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Características del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i> Blazor Server Side</li>
+                                <li><i class="fas fa-check text-success me-2"></i> ASP.NET Web API</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Entity Framework Core</li>
+                                <li><i class="fas fa-check text-success me-2"></i> SQL Server</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i> Bootstrap 5</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Font Awesome Icons</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Validación de Formularios</li>
+                                <li><i class="fas fa-check text-success me-2"></i> Búsqueda en Tiempo Real</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
